@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.product_name }} - Datazon{% endblock %}
+
+{% block custom_styles %}
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .main-content {
+            padding: 20px;
+            margin-top: 70px; 
+        }
+        .review-details {
+            display: none; 
+            margin-top: 10px;
+        }
+        .scrollable-table {
+            max-height: 525px; /* Max-height for scrollable area */
+            overflow-y: auto; /* Enable vertical scrolling */
+        }
+        .truncate-text {
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            max-width: 400px;
+        }
+    </style>
+{% endblock %}
+
+
+{% block content %}
+
+    <div class="mt-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <img src="{{ product.image_url }}" class="img-fluid" alt="{{ product.product_name }}">
+            <br> <br>
+            <!-- <img src="https://picsum.photos/400/300?random=1" class="img-fluid" alt="{{ product.product_name }} - Additional View"> -->
+        
+            <h5><b>Description</b></h5>
+            <p>{{ product.product_description }}</p>
+        </div>
+        <div class="col-md-6">
+            <h2><b>{{ product.product_name }}</b></h2>
+            <hr>
+
+            <b>Category:</b>
+            <p><a href="/product?name_query=&sort_by=&category_id={{ product.category_id }}">{{ category_name }}</a></p>
+
+            <hr>
+
+            <!-- Display Available Listings -->
+            <h5><b>Available Listings</b></h5>
+            {% if listings %}
+                <div class="scrollable-table">
+                    <table class="table table-bordered">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th scope="col">Seller</th>
+                                <th scope="col">Price</th>
+                                <th scope="col">Inventory</th>
+                                <th scope="col">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for listing, review_stats in seller_ratings %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ url_for('review_controller.seller_details', seller_id=listing.seller_id) }}">
+                                            {{ listing.seller_name }}
+                                            <!-- Display average rating -->
+                                            {% if review_stats[1] > 0 %}
+                                            <div>
+                                                {% for star in range(5) %}
+                                                    {% if review_stats[0] >= (star * 2) + 1 %}
+                                                        <i class="fas fa-star"></i> <!-- Full Star -->
+                                                    {% elif review_stats[0] >= star * 2 + 0.5 %}
+                                                        <i class="fas fa-star-half-alt"></i> <!-- Half Star -->
+                                                    {% else %}
+                                                        <i class="far fa-star"></i> <!-- Empty Star -->
+                                                    {% endif %}
+                                                {% endfor %}
+                                                ({{ review_stats[1] }} reviews)
+                                            </div>
+                                            {% else %}
+                                            <p>(No ratings available for this seller.)</p>
+                                            {% endif %}
+                                        </a>
+                                    </td>
+                                    <td>${{ listing.price }}</td>
+                                    <td>{{ listing.inventory_count }} available</td>
+                                    <td>
+                                        {% if current_user.is_authenticated %}
+                                            <form action="{{ url_for('product_controller.add_to_cart') }}" method="post">
+                                                <input type="hidden" name="user_id" value="{{ current_user_id }}">
+                                                <input type="hidden" name="product_id" value="{{ listing.product_id }}">
+                                                <input type="hidden" name="seller_id" value="{{ listing.seller_id }}">
+                                                <input type="hidden" name="next" value="{{ request.url }}">
+                                                <div class="form-group">
+                                                    <input type="number" name="quantity" id="quantity" class="form-control" min="1" max="{{ listing.inventory_count }}" placeholder="Quantity" required>
+                                                </div>
+                                                <button type="submit" class="btn btn-primary">Add to Cart</button>
+                                            </form>
+                                        {% else %}
+                                            <p class="text-muted">
+                                                <a href="{{ url_for('users.login', next=request.full_path) }}">Log in</a> to add items to your cart.
+                                            </p>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p>No listings are currently available for this product.</p>
+            {% endif %}
+            {% if current_user.is_seller %}
+                {% if user_has_listing %}
+                    <a href="/seller" class="btn btn-secondary">Manage My Listings</a>
+                {% else %}
+                    <a href="/seller/create_listing?product_id={{ product_id }}" class="btn btn-secondary">Add My Own Listing</a>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+    <hr>
+
+    <!-- Product Reviews Section -->
+    <div class="product-reviews mt-5">
+        <h3><b>Customer Reviews</b></h3>
+        <div class="d-flex align-items-center">
+            <strong>Average Rating:</strong>
+            <div class="ml-2">
+                {% if review_count > 0 %}
+                    {% for star in range(5) %}
+                        {% if average_rating >= (star * 2) + 1 %}
+                            <i class="fas fa-star"></i> <!-- Full Star -->
+                        {% elif average_rating >= star * 2 + 0.5 %}
+                            <i class="fas fa-star-half-alt"></i> <!-- Half Star -->
+                        {% else %}
+                            <i class="far fa-star"></i> <!-- Empty Star -->
+                        {% endif %}
+                    {% endfor %}
+                    <span>{{ (average_rating/9*5) | round(2) }}/5.0 (based on {{ review_count }} reviews)</span>
+                {% else %}
+                    <p>N/A</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <br>
+
+        <!-- Display Add/Edit Review Button Depending on User's Previous Review Status -->
+        {% if current_user.is_authenticated and user_has_review %}
+            <button id="editReviewBtn" class="btn btn-primary">Edit My Review</button>
+        {% elif current_user.is_authenticated and can_create_review %}
+            <button id="addReviewBtn" class="btn btn-primary">Add a Review</button>
+        {% else %}
+            <button id="addReviewBtn" class="btn btn-secondary disabled" data-toggle="tooltip" data-placement="top" title="
+            {% if current_user.is_authenticated %}
+                You can only review products that you've previously purchased.
+            {% else %}
+                Log in to leave a review.
+            {% endif %}
+            " disabled>Add a Review</button>
+        {% endif %}
+
+        <!-- Hidden Form for Adding/Editing a Review -->
+        <div class="add-review mt-3" style="display: none;">
+            <form action="/product/{{ product_id }}/add_review" method="POST" id="createReviewForm">
+                <div class="form-group">
+                    <label for="title">Review Title</label>
+                    <input type="text" name="title" id="title" class="form-control" value="{{ existing_review.title if user_has_review else '' }}" required>
+                    <span id="titleError" class="text-danger" style="display: none;">Too many characters (max 255).</span>
+                </div>
+                <div class="form-group">
+                    <label for="rating">Rating</label>
+                    <select name="rating" id="rating" class="form-control" required>
+                        <option value="9" {% if user_has_review and existing_review.rating == 9 %}selected{% endif %}>5 Stars - Excellent</option>
+                        <option value="8" {% if user_has_review and existing_review.rating == 8 %}selected{% endif %}>4.5 Stars - Almost Excellent</option>
+                        <option value="7" {% if user_has_review and existing_review.rating == 7 %}selected{% endif %}>4 Stars - Very Good</option>
+                        <option value="6" {% if user_has_review and existing_review.rating == 6 %}selected{% endif %}>3.5 Stars - Quite Good</option>
+                        <option value="5" {% if user_has_review and existing_review.rating == 5 %}selected{% endif %}>3 Stars - Good</option>
+                        <option value="4" {% if user_has_review and existing_review.rating == 4 %}selected{% endif %}>2.5 Stars - Almost Good</option>
+                        <option value="3" {% if user_has_review and existing_review.rating == 3 %}selected{% endif %}>2 Stars - Fair</option>
+                        <option value="2" {% if user_has_review and existing_review.rating == 2 %}selected{% endif %}>1.5 Stars - Below Average</option>
+                        <option value="1" {% if user_has_review and existing_review.rating == 1 %}selected{% endif %}>1 Star - Poor</option>
+                        <option value="0" {% if user_has_review and existing_review.rating == 0 %}selected{% endif %}>0.5 Stars - Very Poor</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="description">Review Description</label>
+                    <textarea name="content" id="description" rows="5" class="form-control" required>{{ existing_review.description if user_has_review else '' }}</textarea>
+                    <span id="descriptionError" class="text-danger" style="display: none;">Too many characters (max 2500).</span>
+                </div>
+                <button type="submit" class="btn btn-success">
+                    {% if user_has_review %}
+                        Save Changes
+                    {% else %}
+                        Submit Review
+                    {% endif %}
+                </button>
+                {% if user_has_review %}
+                    <button type="button" id="deleteReviewBtn" class="btn delete-button">Delete Review</button>
+                {% endif %}
+            </form>
+        </div>
+
+        <br>
+        <br>
+
+        <form class="form-inline" action="/product/{{ product.product_id }}" method="GET">
+            <h6 class="mr-3">Filter reviews:</h6>
+            <select id="getCountReviews" name="get_count" class="form-control mr-sm-2" required>
+                <option value="5" {% if get_count == '5' %}selected{% endif %}>Show 5 results</option>
+                <option value="15" {% if get_count == '15' %}selected{% endif %}>Show 15 results</option>
+                <option value="50" {% if get_count == '50' %}selected{% endif %}>Show 50 results</option>
+                <option value="100" {% if get_count == '100' %}selected{% endif %}>Show 100 results</option>
+                <option value="500" {% if get_count == '500' %}selected{% endif %}>Show 500 results</option>
+                <option value="1000" {% if get_count == '1000' %}selected{% endif %}>Show 1000 results</option>
+                <option value="999999999">Show all results</option>
+            </select>
+
+            <select id="sortType" name="sort_type" class="form-control mr-sm-2" required>
+                <option value="datetime" {% if order_by == 'datetime' %}selected{% endif %}>Most Recent</option>
+                <option value="upvote_count" {% if order_by == 'upvote_count' %}selected{% endif %}>Most Upvotes</option>
+            </select>
+
+            <button class="btn btn-secondary" type="submit">Show Results</button>
+        </form>
+        <br>
+        
+        {% if product_reviews %}
+            <table class="table table-hover table-bordered mt-3">
+                <thead class="thead-dark">
+                    <tr>
+                        <th scope="col">Rating</th>
+                        <th scope="col">Title</th>
+                        <th scope="col">Date Posted</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for review, has_upvoted, reviewer_name in product_reviews %}
+                        <tr onclick="toggleDetails('details-{{ review.user_id }}-{{ review.reviewed_id }}')" style="cursor: pointer;">
+                            <td>
+                                <!-- Star Rating for Each Review -->
+                                {% for star in range(5) %}
+                                    {% if review.rating >= (star * 2) + 1 %}
+                                        <i class="fas fa-star"></i> <!-- Full Star -->
+                                    {% elif review.rating >= (star * 2) %}
+                                        <i class="fas fa-star-half-alt"></i> <!-- Half Star -->
+                                    {% else %}
+                                        <i class="far fa-star"></i> <!-- Empty Star -->
+                                    {% endif %}
+                                {% endfor %}
+                            </td>
+                            <td class="truncate-text">{{ review.title }}</td>
+                            <td>{{ review.datetime.strftime('%B %d, %Y') }}</td>
+                        </tr>
+                        {{ review_macros.render_review_details_with_name_forOneItem(review, has_upvoted, reviewer_name, review.user_id, current_user) }}
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No reviews available for this product yet.</p>
+        {% endif %}
+    </div>
+
+{% endblock %}
+
+
+{% block scripts %}
+    <script src="/static/js/review.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Initialize Bootstrap tooltips
+            $('[data-toggle="tooltip"]').tooltip();
+    
+            // Toggle the add review form when the button is enabled and clicked
+            $('#addReviewBtn, #editReviewBtn').click(function(e) {
+                if (!$(this).hasClass('disabled')) {
+                    e.preventDefault();
+                    $('.add-review').slideToggle(); // Show/hide the review form when the button is clicked
+                }
+            });
+
+            // Delete review button handler
+            $('#deleteReviewBtn').click(function() {
+                if (confirm('Are you sure you want to delete this review?')) {
+                    $.ajax({
+                        url: '/product/{{ product_id }}/delete_review',
+                        type: 'POST',
+                        data: { 'user_id': '{{ current_user.get_id() }}' },
+                        success: function() {
+                            alert('Review deleted successfully.');
+                            location.reload();
+                        },
+                        error: function() {
+                            alert('Failed to delete the review. Please try again.');
+                        }
+                    });
+                }
+            });
+
+            // Character limit validation for the title field
+            $('#title').on('input', function() {
+                let title = $(this).val();
+                if (title.length > 255) {
+                    $('#titleError').show();
+                    $(this).css('border-color', 'red');
+                } else {
+                    $('#titleError').hide();
+                    $(this).css('border-color', '');
+                }
+            });
+
+            // Character limit validation for the description field
+            $('#description').on('input', function() {
+                let description = $(this).val();
+                if (description.length > 2500) {
+                    $('#descriptionError').show();
+                    $(this).css('border-color', 'red');
+                } else {
+                    $('#descriptionError').hide();
+                    $(this).css('border-color', '');
+                }
+            });
+        });
+    </script>
+{% endblock %}

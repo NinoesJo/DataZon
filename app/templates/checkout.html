@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Checkout - Datazon{% endblock %}
+
+{% block custom_styles %}
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .main-content {
+            padding: 20px;
+            margin-top: 70px;
+        }
+        .total-cost {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .user-info {
+            margin-top: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .user-info h5 {
+            margin-bottom: 10px;
+        }
+        .action-buttons {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .flash-message {
+            margin-top: 20px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    {% if current_user.is_authenticated %}
+        <h2>Checkout</h2>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-message">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% if checkout_items %}
+        <table class="table table-hover table-bordered container">
+            <thead class="thead-dark">
+                <tr>
+                    <th scope="col">Product</th>
+                    <th scope="col">Seller</th>
+                    <th scope="col">Product Description</th>
+                    <th scope="col">Quantity</th>
+                    <th scope="col">Price Per Item</th>
+                    <th scope="col">Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in checkout_items %}
+                <tr>
+                    <td>{{ item.product_name }}</td>
+                    <td>{{ item.seller_name }}</td>
+                    <td>{{ item.product_description }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>${{ item.price }}</td>
+                    <td>${{ item.price * item.quantity }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <p class="total-cost">Total Cost: ${{ total_cost }}</p>
+
+        {% if user_info %}
+        <div class="user-info">
+            <h5>Billing Information</h5>
+            <p><strong>Name:</strong> {{ user_info.full_name }}</p>
+            <p><strong>Address:</strong> {{ user_info.street }}, {{ user_info.city }}, {{ user_info.state }} {{ user_info.zip_code }}, {{ user_info.country }}</p>
+
+            <button class="btn btn-link" id="toggleAddressForm">Change Address</button>
+
+            <form id="changeAddressForm" action="/account/update_address" method="POST" style="display: none;">
+                <input type="hidden" name="user_id" value="{{ user_info.user_id }}">
+                <div class="form-group">
+                    <label for="street">Street</label>
+                    <input type="text" class="form-control" id="street" name="street" placeholder="Enter new street" value="{{ user_info.street }}" maxlength="200" required>
+                </div>
+                <div class="form-group">
+                    <label for="city">City</label>
+                    <input type="text" class="form-control" id="city" name="city" placeholder="Enter new city" value="{{ user_info.city }}" maxlength="200" required>
+                </div>
+                <div class="form-group">
+                    <label for="state">State</label>
+                    <input type="text" class="form-control" id="state" name="state" placeholder="Enter new state" value="{{ user_info.state }}" maxlength="200" required>
+                </div>
+                <div class="form-group">
+                    <label for="zip_code">Zip Code</label>
+                    <input type="text" class="form-control" id="zip_code" name="zip_code" placeholder="Enter new zip code" value="{{ user_info.zip_code }}" maxlength="11" required>
+                </div>
+                <div class="form-group">
+                    <label for="country">Country</label>
+                    <input type="text" class="form-control" id="country" name="country" placeholder="Enter new country" value="{{ user_info.country }}" maxlength="200" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Update Address</button>
+            </form>
+        </div>
+        {% endif %}
+
+        <div class="action-buttons">
+            <form action="/cart" method="GET">
+                <input type="hidden" name="user_id" value="{{ user_id }}">
+                <button type="submit" class="btn btn-secondary">Return to Cart</button>
+            </form>
+            <form action="/checkout/submit_order" method="POST">
+                <input type="hidden" name="user_id" value="{{ user_id }}">
+                <button type="submit" class="btn btn-primary">Submit Order</button>
+            </form>
+        </div>
+        {% else %}
+        <p>No items available for checkout.</p>
+        {% endif %}
+    {% else %}
+        <p>
+            <a href="{{ url_for('users.login', next=request.path) }}">Log in</a> 
+            or 
+            <a href="{{ url_for('users.register', next=request.path) }}">Register</a> 
+            to proceed to checkout.
+        </p>
+    {% endif %}
+
+{% endblock %}
+
+
+{% block scripts %}
+    <script>
+        document.getElementById('toggleAddressForm').addEventListener('click', function() {
+            const form = document.getElementById('changeAddressForm');
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        });
+    </script>
+{% endblock %}

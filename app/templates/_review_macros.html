@@ -1,0 +1,193 @@
+{% macro render_review_filter_form(action_url='/social', get_count='', sort_type='') %}
+    <form class="form-inline" action="{{ action_url }}" method="GET">
+        
+        <select id="getCountReviews" name="get_count" class="form-control mr-sm-2" required>
+            <option value="5" {% if get_count == '5' %}selected{% endif %}>Show 5 results</option>
+            <option value="15" {% if get_count == '15' %}selected{% endif %}>Show 15 results</option>
+            <option value="50" {% if get_count == '50' %}selected{% endif %}>Show 50 results</option>
+            <option value="100" {% if get_count == '100' %}selected{% endif %}>Show 100 results</option>
+            <option value="500" {% if get_count == '500' %}selected{% endif %}>Show 500 results</option>
+            <option value="1000" {% if get_count == '1000' %}selected{% endif %}>Show 1000 results</option>
+            <option value="999999999" {% if get_count == '999999999' %}selected{% endif %}>Show all results</option>
+        </select>
+
+        <select id="sortType" name="sort_type" class="form-control mr-sm-2" required>
+            <option value="datetime" {% if sort_type == 'datetime' %}selected{% endif %}>Most Recent</option>
+            <option value="upvote_count" {% if sort_type == 'upvote_count' %}selected{% endif %}>Most Upvotes</option>
+        </select>
+
+        <button class="btn btn-outline-success" type="submit">Show Feedback</button>
+    </form>
+{% endmacro %}
+
+
+{% macro render_review_details(review, has_upvoted, current_user) %}
+<tr id="{{ review.review_type | lower }}-{{ review.reviewed_id }}" class="review-details">
+    <td colspan="3">
+        <div class="p-3">
+            <strong>
+                <!-- Star Rating -->
+                {% for star in range(5) %}
+                    {% if review.rating >= (star * 2) + 1 %}
+                        <i class="fas fa-star"></i> <!-- Full Star -->
+                    {% elif review.rating == (star * 2) %}
+                        <i class="fas fa-star-half-alt"></i> <!-- Half Star -->
+                    {% else %}
+                        <i class="far fa-star"></i> <!-- Empty Star -->
+                    {% endif %}
+                {% endfor %}
+                - {{ review.title }}
+            </strong><br>
+
+            <small>
+                Reviewed on {{ review.datetime.strftime('%B %d, %Y') }}.
+                {% if review.edited_on %}
+                    Edited on {{ review.edited_on.strftime('%B %d, %Y') }}.
+                {% endif %}
+            </small><br><br>
+
+            <p>{{ review.description }}</p>
+
+            <small>
+                This review has <span id="upvote-count-{{ review.reviewed_id }}">{{ review.upvote_count }}</span>
+                {% if review.upvote_count == 1 %}
+                    upvote.
+                {% else %}
+                    upvotes.
+                {% endif %}
+                <br>
+
+                <!-- Upvote button for logged-in users -->
+                {% if current_user.is_authenticated %}
+                    <!-- Conditional Button Display -->
+                    <button id="upvote-btn-{{ review.review_type | lower }}-{{ review.reviewed_id }}" class="btn btn-outline-primary btn-sm"
+                            onclick="toggleUpvote('{{ review.review_type | lower }}-{{ review.reviewed_id }}', '{{ review.review_type }}', '{{ review.user_id }}')">
+                        {% if has_upvoted %} Remove Upvote {% else %} Upvote {% endif %}
+                    </button>
+                {% else %}
+                    <!-- Redirect to login button for non-logged-in users -->
+                    <a href="{{ url_for('users.login', next=request.url) }}" class="btn btn-outline-primary btn-sm">Log in to upvote</a>
+                {% endif %}
+
+                <span id="upvote-message-{{ review.review_type | lower }}-{{ review.reviewed_id }}" style="display: none;">Thanks for your feedback!</span>
+            </small>
+        </div>
+    </td>
+</tr>
+{% endmacro %}
+
+
+{% macro render_review_details_with_name(review, has_upvoted, reviewer_name, reviewer_id, current_user) %}
+<tr id="{{ review.review_type | lower }}-{{ review.reviewed_id }}" class="review-details">
+    <td colspan="3">
+        <div class="p-3">
+            <strong>
+                <!-- Star Rating -->
+                {% for star in range(5) %}
+                    {% if review.rating >= (star * 2) + 1 %}
+                        <i class="fas fa-star"></i> <!-- Full Star -->
+                    {% elif review.rating == (star * 2) %}
+                        <i class="fas fa-star-half-alt"></i> <!-- Half Star -->
+                    {% else %}
+                        <i class="far fa-star"></i> <!-- Empty Star -->
+                    {% endif %}
+                {% endfor %}
+                - {{ review.title }}
+            </strong><br>
+
+            <small>
+                Reviewed by 
+                <a href="/social/{{ reviewer_id }}?get_count=50&sort_type=datetime">{{ reviewer_name }}</a> 
+                on {{ review.datetime.strftime('%B %d, %Y') }}.
+                {% if review.edited_on %}
+                    Edited on {{ review.edited_on.strftime('%B %d, %Y') }}.
+                {% endif %}
+            </small><br><br>
+
+            <p>{{ review.description }}</p>
+
+            <small>
+                This review has <span id="upvote-count-{{ review.reviewed_id }}">{{ review.upvote_count }}</span>
+                {% if review.upvote_count == 1 %}
+                    upvote.
+                {% else %}
+                    upvotes.
+                {% endif %}
+                <br>
+
+                <!-- Upvote button for logged-in users -->
+                {% if current_user.is_authenticated %}
+                    <!-- Conditional Button Display -->
+                    <button id="upvote-btn-{{ review.review_type | lower }}-{{ review.reviewed_id }}" class="btn btn-outline-primary btn-sm"
+                            onclick="toggleUpvote('{{ review.review_type | lower }}-{{ review.reviewed_id }}', '{{ review.review_type }}', '{{ review.user_id }}')">
+                        {% if has_upvoted %} Remove Upvote {% else %} Upvote {% endif %}
+                    </button>
+                {% else %}
+                    <!-- Redirect to login button for non-logged-in users -->
+                    <a href="{{ url_for('users.login', next=request.url) }}" class="btn btn-outline-primary btn-sm">Log in to upvote</a>
+                {% endif %}
+
+                <span id="upvote-message-{{ review.review_type | lower }}-{{ review.reviewed_id }}" style="display: none;">Thanks for your feedback!</span>
+            </small>
+        </div>
+    </td>
+</tr>
+{% endmacro %}
+
+
+{% macro render_review_details_with_name_forOneItem(review, has_upvoted, reviewer_name, reviewer_id, current_user) %}
+<tr id="details-{{ review.user_id }}-{{ review.reviewed_id }}" class="review-details">
+    <td colspan="3">
+        <div class="p-3">
+            <strong>
+                <!-- Star Rating -->
+                {% for star in range(5) %}
+                    {% if review.rating >= (star * 2) + 1 %}
+                        <i class="fas fa-star"></i> <!-- Full Star -->
+                    {% elif review.rating == (star * 2) %}
+                        <i class="fas fa-star-half-alt"></i> <!-- Half Star -->
+                    {% else %}
+                        <i class="far fa-star"></i> <!-- Empty Star -->
+                    {% endif %}
+                {% endfor %}
+                - {{ review.title }}
+            </strong><br>
+
+            <small>
+                Reviewed by 
+                <a href="/social/{{ reviewer_id }}?get_count=50&sort_type=datetime">{{ reviewer_name }}</a> 
+                on {{ review.datetime.strftime('%B %d, %Y') }}.
+                {% if review.edited_on %}
+                    Edited on {{ review.edited_on.strftime('%B %d, %Y') }}.
+                {% endif %}
+            </small><br><br>
+
+            <p>{{ review.description }}</p>
+
+            <small>
+                This review has <span id="upvote-count-{{ review.reviewed_id }}">{{ review.upvote_count }}</span>
+                {% if review.upvote_count == 1 %}
+                    upvote.
+                {% else %}
+                    upvotes.
+                {% endif %}
+                <br>
+
+                <!-- Upvote button for logged-in users -->
+                {% if current_user.is_authenticated %}
+                    <!-- Conditional Button Display -->
+                    <button id="upvote-btn-{{ review.user_id }}-{{ review.reviewed_id }}" class="btn btn-outline-primary btn-sm"
+                            onclick="toggleUpvote('{{ review.user_id }}-{{ review.reviewed_id }}', '{{ review.review_type }}', '{{ review.user_id }}')">
+                        {% if has_upvoted %} Remove Upvote {% else %} Upvote {% endif %}
+                    </button>
+                {% else %}
+                    <!-- Redirect to login button for non-logged-in users -->
+                    <a href="{{ url_for('users.login', next=request.url) }}" class="btn btn-outline-primary btn-sm">Log in to upvote</a>
+                {% endif %}
+                
+                <span id="upvote-message-{{ review.user_id }}-{{ review.reviewed_id }}" style="display: none;">Thanks for your feedback!</span>
+            </small>
+        </div>
+    </td>
+</tr>
+{% endmacro %}

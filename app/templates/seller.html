@@ -1,0 +1,341 @@
+{% import '_review_macros.html' as review_macros %}
+
+{% extends "base.html" %}
+
+{% block title %}
+    {% if not is_seller %}
+        Seller Not Found - Datazon
+    {% else %}
+        {{ seller_name }} - Datazon
+    {% endif %}
+{% endblock %}
+
+{% block custom_styles %}
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .main-content {
+            padding: 20px;
+            margin-top: 70px; 
+        }
+        .review-details {
+            display: none; 
+            margin-top: 10px;
+        }
+        .disabled {
+            /* pointer-events: none; */
+            opacity: 0.6;
+        }
+
+    </style>
+{% endblock %}
+
+
+{% block content %}
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    {% if not is_seller %}
+        <p>This user is not a seller or does not exist.</p>
+
+    {% else %}
+        <h1><strong>{{ seller_name }}</strong></h1>
+        <h5>Seller</h5>
+
+        <br>
+        
+        <!-- Display average rating -->
+        {% if review_count > 0 %}
+        <div>
+            <strong>Average Rating:</strong> 
+            {% for star in range(5) %}
+                {% if average_rating >= (star * 2) + 1 %}
+                    <i class="fas fa-star"></i> <!-- Full Star -->
+                {% elif average_rating >= star * 2 + 0.5 %}
+                    <i class="fas fa-star-half-alt"></i> <!-- Half Star -->
+                {% else %}
+                    <i class="far fa-star"></i> <!-- Empty Star -->
+                {% endif %}
+            {% endfor %}
+            - {{ (average_rating/9*5) | round(2) }} based on {{ review_count }} reviews
+        </div>
+        {% endif %}
+
+        <br>
+
+        <!-- Display Add/Edit Review Button Depending on User's Previous Review Status -->
+        {% if current_user.is_authenticated and (current_user.get_id()|int == seller_id|int) %}
+            <button id="addReviewBtn" class="btn btn-secondary disabled" data-toggle="tooltip" data-placement="top" title="
+                You cannot review yourself.
+                " disabled>Add a Review</button>
+        {% elif current_user.is_authenticated and user_has_review %}
+            <button id="editReviewBtn" class="btn btn-primary">Edit My Review</button>
+        {% elif current_user.is_authenticated and can_create_review %}
+            <button id="addReviewBtn" class="btn btn-primary">Add a Review</button>
+        {% else %}
+            <button id="addReviewBtn" class="btn btn-secondary disabled" data-toggle="tooltip" data-placement="top" title="
+            {% if current_user.is_authenticated %}
+                You can only review sellers who you've ordered from.
+            {% else %}
+                Log in to leave a review.
+            {% endif %}
+            " disabled>Add a Review</button>
+        {% endif %}
+
+        <!-- Hidden Form for Adding/Editing a Review -->
+        <div class="add-review mt-3" style="display: none;">
+            <form action="/seller/{{ seller_id }}/add_review" method="POST" id="createReviewForm">
+                <div class="form-group">
+                    <label for="title">Review Title</label>
+                    <input type="text" name="title" id="title" class="form-control" value="{{ existing_review.title if user_has_review else '' }}" maxlength="230" required>
+                    <span id="titleError" class="text-danger" style="display: none;">Too many characters (max 255).</span>
+                </div>
+                <div class="form-group">
+                    <label for="rating">Rating</label>
+                    <select name="rating" id="rating" class="form-control" required>
+                        <option value="9" {% if user_has_review and existing_review.rating == 9 %}selected{% endif %}>5 Stars - Excellent</option>
+                        <option value="8" {% if user_has_review and existing_review.rating == 8 %}selected{% endif %}>4.5 Stars - Almost Excellent</option>
+                        <option value="7" {% if user_has_review and existing_review.rating == 7 %}selected{% endif %}>4 Stars - Very Good</option>
+                        <option value="6" {% if user_has_review and existing_review.rating == 6 %}selected{% endif %}>3.5 Stars - Quite Good</option>
+                        <option value="5" {% if user_has_review and existing_review.rating == 5 %}selected{% endif %}>3 Stars - Good</option>
+                        <option value="4" {% if user_has_review and existing_review.rating == 4 %}selected{% endif %}>2.5 Stars - Almost Good</option>
+                        <option value="3" {% if user_has_review and existing_review.rating == 3 %}selected{% endif %}>2 Stars - Fair</option>
+                        <option value="2" {% if user_has_review and existing_review.rating == 2 %}selected{% endif %}>1.5 Stars - Below Average</option>
+                        <option value="1" {% if user_has_review and existing_review.rating == 1 %}selected{% endif %}>1 Star - Poor</option>
+                        <option value="0" {% if user_has_review and existing_review.rating == 0 %}selected{% endif %}>0.5 Stars - Very Poor</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="description">Review Description</label>
+                    <textarea name="content" id="description" rows="5" class="form-control" maxlength="2400" required>{{ existing_review.description if user_has_review else '' }}</textarea>
+                    <span id="descriptionError" class="text-danger" style="display: none;">Too many characters (max 2500).</span>
+                </div>
+                <button type="submit" class="btn btn-success">
+                    {% if user_has_review %}
+                        Save Changes
+                    {% else %}
+                        Submit Review
+                    {% endif %}
+                </button>
+                {% if user_has_review %}
+                    <button type="button" id="deleteReviewBtn" class="btn delete-button">Delete Review</button>
+                {% endif %}
+            </form>
+        </div>
+
+        <br>
+
+        <hr>
+
+        {% if reviews %}
+            <h3>Customer Reviews</h3>
+            <br>
+            <form class="form-inline" action="/seller/{{ seller_id }}" method="GET">
+                <h6 class="mr-3">Filter reviews:</h6>
+                <select id="getCountReviews" name="get_count" class="form-control mr-sm-2" required>
+                    <option value="5" {% if request.args.get('get_count') == '5' %}selected{% endif %}>Show 5 results</option>
+                    <option value="15" {% if request.args.get('get_count') == '15' %}selected{% endif %}>Show 15 results</option>
+                    <option value="50" {% if request.args.get('get_count') == '50' %}selected{% endif %}>Show 50 results</option>
+                    <option value="100" {% if request.args.get('get_count') == '100' %}selected{% endif %}>Show 100 results</option>
+                    <option value="500" {% if request.args.get('get_count') == '500' %}selected{% endif %}>Show 500 results</option>
+                    <option value="1000" {% if request.args.get('get_count') == '1000' %}selected{% endif %}>Show 1000 results</option>
+                    <option value="999999999">Show all results</option>
+                </select>
+
+                <select id="sortType" name="sort_type" class="form-control mr-sm-2" required>
+                    <option value="datetime" {% if request.args.get('sort_type') == 'datetime' %}selected{% endif %}>Most Recent</option>
+                    <option value="upvote_count" {% if request.args.get('sort_type') == 'upvote_count' %}selected{% endif %}>Most Upvotes</option>
+                </select>
+                
+                <button class="btn btn-outline-success" type="submit">Show Feedback</button>
+            </form>
+
+            
+
+            <br>
+
+            <table class='table table-hover table-bordered container'>
+                <thead class="thead-dark">
+                    <tr>
+                        <th scope="col">Title</th>
+                        <th scope="col">Rating</th>
+                        <th scope="col">Date Posted</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for review, has_upvoted, reviewer_name in reviews %}
+                        <tr onclick="toggleDetails('details-{{ review.user_id }}-{{ review.reviewed_id }}')" style="cursor: pointer;">
+                            <td class="truncate-text">{{ review.title }}</td>
+                            <td>
+                                <!-- Star Rating -->
+                                    {% for star in range(5) %}
+                                    {% if review.rating >= (star * 2) + 1 %}
+                                        <i class="fas fa-star"></i> <!-- Full Star -->
+                                    {% elif review.rating == (star * 2) %}
+                                        <i class="fas fa-star-half-alt"></i> <!-- Half Star -->
+                                    {% else %}
+                                        <i class="far fa-star"></i> <!-- Empty Star -->
+                                    {% endif %}
+                                {% endfor %}
+                            </td>
+                            <td>{{ review.datetime.strftime('%B %d, %Y') }}</td>
+                        </tr>
+                        {{ review_macros.render_review_details_with_name_forOneItem(review, has_upvoted, reviewer_name, review.user_id, current_user) }}
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No ratings available for this seller.</p>
+        {% endif %}
+        
+        <br>
+        <hr>
+
+        <!-- Display Products Sold by the Seller -->
+        <h3>Sold by {{ seller_name }}</h3>
+        <br>
+        <div class="row">
+            {% if seller_products %}
+                {% for product in seller_products %}
+                    <div class="col-md-4 mb-4">
+                        <!-- Product Card -->
+                        <div class="card product-card" id="product-card-{{ product.product_id }}" data-product-id="{{ product.product_id }}">
+                            <div class="card-body">
+                                <h5 class="truncate-card-title"><a href="/product/{{ product.product_id }}"><strong>{{ product.product_name }}</strong></a></h5>
+                                <p class="truncate-product-description">{{ product.product_description }}</p>
+                                <p class="card-text">${{ product.price }}</p>
+                                <!-- Add to Cart Button -->
+                                <button class="btn btn-success add-to-cart-btn" data-toggle="modal" data-target="#addToCartModal-{{ product.product_id }}">
+                                    <i class="fa fa-shopping-cart"></i> Add to Cart
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Add to Cart Modal -->
+                        <div class="modal fade" id="addToCartModal-{{ product.product_id }}" tabindex="-1" role="dialog" aria-labelledby="addToCartModalLabel" aria-hidden="true">
+                            <div class="modal-dialog" role="document">
+                                <div class="modal-content">
+                                    <form action="/product/add_to_cart" method="POST">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="addToCartModalLabel">Add to Cart</h5>
+                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <input type="hidden" name="product_id" value="{{ product.product_id }}">
+                                            <input type="hidden" name="seller_id" value="{{ product.seller_id }}">
+                                            {% if current_user.is_authenticated %}
+                                                <div class="form-group">
+                                                    <input type="hidden" class="form-control" id="user_id" name="user_id" value="{{ current_user.get_id() }}" readonly>
+                                                </div>
+                                            {% else %}
+                                                <p class="form-text text-muted">
+                                                    You need to be logged in to add a product listing.
+                                                </p>
+                                                <a href="{{ url_for('users.login', next=request.full_path) }}" class="btn btn-primary">Login/Register</a>
+                                            {% endif %}
+                                            {% if current_user.is_authenticated %}
+                                                <div class="form-group">
+                                                    <label for="quantity">Quantity:</label>
+                                                    <input type="number" class="form-control" id="quantity" name="quantity" min="1" required>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        {% if current_user.is_authenticated %}
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                                <button type="submit" class="btn btn-primary">Add to Cart</button>
+                                            </div>
+                                        {% endif %}
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p>No products available from this seller currently.</p>
+            {% endif %}
+        </div>
+
+    {% endif %}
+
+{% endblock %}
+
+
+{% block scripts %}
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/review.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Initialize Bootstrap tooltips
+            $('[data-toggle="tooltip"]').tooltip();
+    
+            // Toggle the add review form when the button is enabled and clicked
+            $('#addReviewBtn, #editReviewBtn').click(function(e) {
+                if (!$(this).hasClass('disabled')) {
+                    e.preventDefault();
+                    $('.add-review').slideToggle(); // Show/hide the review form when the button is clicked
+                }
+            });
+
+            // Delete review button handler
+            $('#deleteReviewBtn').click(function() {
+                if (confirm('Are you sure you want to delete this review?')) {
+                    $.ajax({
+                        url: '/seller/{{ seller_id }}/delete_review',
+                        type: 'POST',
+                        data: { 'user_id': '{{ current_user.get_id() }}' },
+                        success: function() {
+                            alert('Review deleted successfully.');
+                            location.reload();
+                        },
+                        error: function() {
+                            alert('Failed to delete the review. Please try again.');
+                        }
+                    });
+                }
+            });
+
+            // Character limit validation for the title field
+            $('#title').on('input', function() {
+                let title = $(this).val();
+                if (title.length > 255) {
+                    $('#titleError').show();
+                    $(this).css('border-color', 'red');
+                } else {
+                    $('#titleError').hide();
+                    $(this).css('border-color', '');
+                }
+            });
+
+            // Character limit validation for the description field
+            $('#description').on('input', function() {
+                let description = $(this).val();
+                if (description.length > 2500) {
+                    $('#descriptionError').show();
+                    $(this).css('border-color', 'red');
+                } else {
+                    $('#descriptionError').hide();
+                    $(this).css('border-color', '');
+                }
+            });
+        });
+    </script>
+
+{% endblock %}

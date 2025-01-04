@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Homepage - Datazon{% endblock %}
+
+{% block custom_styles %}
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f8f9fa;
+        }
+        .container {
+            text-align: center;
+        }
+        h1 {
+            margin-bottom: 30px;
+        }
+        .link-list {
+            list-style-type: none;
+            padding: 0;
+            margin-bottom: 20px;
+        }
+        .link-list li {
+            margin: 10px 0;
+        }
+        .link-list a {
+            text-decoration: none;
+            color: #007bff;
+            font-weight: bold;
+        }
+        .link-list a:hover {
+            color: #0056b3;
+        }
+        .auth-button {
+            margin-top: 10px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+
+    <h1>Welcome to DataZon</h1>
+    <p>Explore the various sections below:</p>
+    <ul class="link-list">
+        {% if current_user.is_authenticated %}
+            <li><a href="/product">View Products</a></li>
+            <li><a href="/cart">My Cart</a></li>
+            <li><a href="/order">Order History</a></li>
+            <li><a href="/account">My Account</a></li>
+            <li><a href="/social/{{ current_user.get_id() }}">Reviews I've Written</a></li>
+            {% if current_user.is_seller %}
+                <li><a href="/seller"><strong>Seller Dashboard</strong></a></li>
+            {% endif %}
+        {% else %}
+            <li><a href="/product">Product Page</a></li>
+        {% endif %}
+    </ul>
+    <div class="auth-button">
+        {% if current_user.is_authenticated %}
+            <a href="{{ url_for('users.logout') }}" type="button" class="btn btn-primary">Log Out</a>
+        {% else %}
+            <a href="{{ url_for('users.login') }}" type="button" class="btn btn-primary">Log In</a>
+        {% endif %}
+
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Datazon{% endblock %}
+
+{% block custom_styles %}
+<style>
+  body {
+      font-family: "Lato", sans-serif;
+  }
+
+  .main-head {
+      height: 150px;
+      background: #FFF;
+  }
+
+  .sidenav {
+      height: 100%;
+      background-color: #000;
+      overflow-x: hidden;
+      padding-top: 20px;
+  }
+
+  .main {
+      padding: 0px 10px;
+  }
+
+  .login-main-text {
+      margin-top: 20%;
+      padding: 60px;
+      color: #fff;
+  }
+
+  .login-main-text h2 {
+      font-weight: 300;
+  }
+
+  .btn-black {
+      background-color: #000 !important;
+      color: #fff;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<h1>Login</h1>
+
+<form action="" method="post" novalidate>
+  {{ form.hidden_tag() }}
+  <p>
+    {{ form.email.label }}<br/>
+    {{ form.email(size=64) }}<br/>
+    {% for error in form.email.errors %}
+    <span style="color: red;">[{{ error }}]</span>
+    {% endfor %}
+  </p>
+  <p>
+    {{ form.password.label }}<br/>
+    {{ form.password(size=64) }}<br/>
+    {% for error in form.password.errors %}
+    <span style="color: red;">[{{ error }}]</span>
+    {% endfor %}
+  </p>
+  <p>
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <ul>
+      {% for message in messages %}
+      <li>{{ message }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% endwith %}
+  </p>
+  {{ form.submit(class_="btn btn-black") }}
+  <a class="btn btn-secondary" href="{{ url_for('users.register') }}" role="button">Register</a>
+</form>
+
+{% endblock %}

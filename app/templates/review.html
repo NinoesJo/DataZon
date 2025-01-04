@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if not account_exists or not reviews %}
+        No User Found - Datazon
+    {% else %}
+        {{ reviewer_name }} - Datazon
+    {% endif %}
+{% endblock %}
+
+{% block custom_styles %}
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .main-content {
+            padding: 20px;
+            margin-top: 70px; 
+        }
+        .review-details {
+            display: none; 
+            margin-top: 10px;
+        }
+    </style>
+{% endblock %}
+
+
+{% block content %}
+
+    {% if not account_exists or not reviews %}
+        <p>This user does not exist or has not posted a review.</p>
+    {% else %}
+        <h2>Reviews by {{ reviewer_name }}</h2>
+
+        <br>
+
+        <form class="form-inline" action="/social/{{ user_id }}" method="GET">
+            <h6 class="mr-3">Filter reviews:</h6>
+            <select id="getCountReviews" name="get_count" class="form-control mr-sm-2" required>
+                <option value="5" {% if request.args.get('get_count') == '5' %}selected{% endif %}>Show 5 results</option>
+                <option value="15" {% if request.args.get('get_count') == '15' %}selected{% endif %}>Show 15 results</option>
+                <option value="50" {% if request.args.get('get_count') == '50' %}selected{% endif %}>Show 50 results</option>
+                <option value="100" {% if request.args.get('get_count') == '100' %}selected{% endif %}>Show 100 results</option>
+                <option value="500" {% if request.args.get('get_count') == '500' %}selected{% endif %}>Show 500 results</option>
+                <option value="1000" {% if request.args.get('get_count') == '1000' %}selected{% endif %}>Show 1000 results</option>
+                <option value="999999999">Show all results</option>
+            </select>
+
+            <select id="sortType" name="sort_type" class="form-control mr-sm-2" required>
+                <option value="datetime" {% if request.args.get('sort_type') == 'datetime' %}selected{% endif %}>Most Recent</option>
+                <option value="upvote_count" {% if request.args.get('sort_type') == 'upvote_count' %}selected{% endif %}>Most Upvotes</option>
+            </select>
+            
+            <button class="btn btn-primary" type="submit">Show Results</button>
+        </form>
+
+        <br>
+
+        {% if reviews %}
+        <h4>Product Reviews</h4>
+        <table class='table table-hover table-bordered container'>
+            <thead class="thead-dark">
+                <tr>
+                    <th scope="col">Title</th>
+                    <th scope="col">Product</th>
+                    <th scope="col">Date Posted</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for review, has_upvoted, reviewer_name in reviews %}
+                    {% if review.review_type == 'Product' %}
+                        <tr onclick="toggleDetails('{{ review.review_type | lower }}-{{ review.reviewed_id }}')" style="cursor: pointer;">
+                            <td>{{ review.title }}</td>
+                            <td>
+                                <a href="/product/{{ review.reviewed_id }}">
+                                    {{ review.name }}
+                                </a>
+                            </td>
+                            <td>{{ review.datetime.strftime('%B %d, %Y') }}</td>
+                        </tr>
+                        {{ review_macros.render_review_details_with_name(review, has_upvoted, reviewer_name, review.user_id, current_user) }}
+                    {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h4>Seller Reviews</h4>
+        <table class='table table-hover table-bordered container'>
+            <thead class="thead-dark">
+                <tr>
+                    <th scope="col">Title</th>
+                    <th scope="col">Seller</th>
+                    <th scope="col">Date Posted</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for review, has_upvoted, reviewer_name in reviews %}
+                    {% if review.review_type == 'Seller' %}
+                        <tr onclick="toggleDetails('{{ review.review_type | lower }}-{{ review.reviewed_id }}')" style="cursor: pointer;">
+                            <td>{{ review.title }}</td>
+                            <td>
+                                <a href="/seller/{{ review.reviewed_id }}">
+                                    {{ review.name }}
+                                </a>
+                            </td>
+                            <td>{{ review.datetime.strftime('%B %d, %Y') }}</td>
+                        </tr>
+                        {{ review_macros.render_review_details_with_name(review, has_upvoted, reviewer_name, review.user_id, current_user) }}
+                    {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% else %}
+        <p>No feedback found for this user.</p>
+        {% endif %}
+    {% endif %}
+
+{% endblock %}

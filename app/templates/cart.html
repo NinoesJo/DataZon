@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}My Cart - Datazon{% endblock %}
+
+{% block custom_styles %}
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .main-content {
+            padding: 20px;
+            margin-top: 70px;
+        }
+        .dropdown-menu a {
+            cursor: pointer;
+        }
+        .total-cost {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        .alert {
+            margin-top: 20px;
+        }
+        .checkout-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+
+    <h2>My Cart</h2>
+
+    <br>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if current_user.is_authenticated %}
+        <h3>Items in Cart</h3>
+        <table class="table table-hover table-bordered container">
+            <thead class="thead-dark">
+                <tr>
+                    <th scope="col">Product</th>
+                    <th scope="col">Seller</th>
+                    <th scope="col">Product Description</th>
+                    <th scope="col">Quantity</th>
+                    <th scope="col">Price Per Item</th>
+                    <th scope="col">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cart in carts %}
+                    {% if not cart.saved_for_later %}
+                    <tr>
+                        <td><a class="nav-link" href="/product/{{ cart.product_id }}">{{ cart.product_name }}</a></td>
+                        <td><a class="nav-link" href="/seller/{{ cart.seller_id }}">{{ cart.seller_name }}</a></td>
+                        <td>{{ cart.product_description }}</td>
+                        <td>{{ cart.quantity }}</td>
+                        <td>${{ cart.price }}</td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton{{ loop.index }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    Actions
+                                </button>
+                                <div class="dropdown-menu" aria-labelledby="dropdownMenuButton{{ loop.index }}">
+                                    <form action="/cart/update_sfl" method="POST" style="display:inline;">
+                                        <input type="hidden" name="user_id" value="{{ cart.user_id }}">
+                                        <input type="hidden" name="product_id" value="{{ cart.product_id }}">
+                                        <input type="hidden" name="seller_id" value="{{ cart.seller_id }}">
+                                        <button type="submit" class="dropdown-item">Move to Saved For Later</button>
+                                    </form>
+                                    <form action="/cart/delete_item" method="POST" style="display:inline;">
+                                        <input type="hidden" name="user_id" value="{{ cart.user_id }}">
+                                        <input type="hidden" name="product_id" value="{{ cart.product_id }}">
+                                        <input type="hidden" name="seller_id" value="{{ cart.seller_id }}">
+                                        <button type="submit" class="dropdown-item">Delete Item</button>
+                                    </form>
+                                    <a class="dropdown-item" href="#" data-toggle="modal" data-target="#updateQuantityModal-{{ cart.product_id }}-{{ cart.seller_id }}">Update Item Quantity</a>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="checkout-section">
+            <p class="total-cost">Total Cost: ${{ total_cost }}</p>
+            <form action="/checkout" method="GET">
+                <input type="hidden" name="user_id" value="{{ carts[0].user_id if carts else '' }}">
+                <button type="submit" class="btn btn-primary">Checkout</button>
+            </form>
+        </div>
+        {% for cart in carts %}
+        <div class="modal fade" id="updateQuantityModal-{{ cart.product_id }}-{{ cart.seller_id }}" tabindex="-1" role="dialog" aria-labelledby="updateQuantityModalLabel-{{ cart.product_id }}-{{ cart.seller_id }}" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <form action="/cart/update_quantity" method="POST">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="updateQuantityModalLabel-{{ cart.product_id }}-{{ cart.seller_id }}">Update Item Quantity</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <input type="hidden" name="user_id" value="{{ cart.user_id }}">
+                            <input type="hidden" name="product_id" value="{{ cart.product_id }}">
+                            <input type="hidden" name="seller_id" value="{{ cart.seller_id }}">
+                            <div class="form-group">
+                                <label for="quantity-{{ cart.product_id }}-{{ cart.seller_id }}">Quantity</label>
+                                <input type="number" class="form-control" id="quantity-{{ cart.product_id }}-{{ cart.seller_id }}" name="quantity" value="{{ cart.quantity }}" min="1" required>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Update</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        <h3>Saved For Later</h3>
+        <table class="table table-hover table-bordered container">
+            <thead class="thead-dark">
+                <tr>
+                    <th scope="col">Product</th>
+                    <th scope="col">Seller</th>
+                    <th scope="col">Product Description</th>
+                    <th scope="col">Quantity</th>
+                    <th scope="col">Price Per Item</th>
+                    <th scope="col">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cart in carts %}
+                    {% if cart.saved_for_later %}
+                    <tr>
+                        <td><a class="nav-link" href="/product/{{ cart.product_id }}">{{ cart.product_name }}</a></td>
+                        <td><a class="nav-link" href="/seller/{{ cart.seller_id }}">{{ cart.seller_name }}</a></td>
+                        <td>{{ cart.product_description }}</td>
+                        <td>{{ cart.quantity }}</td>
+                        <td>${{ cart.price }}</td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButtonSaved{{ loop.index }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    Actions
+                                </button>
+                                <div class="dropdown-menu" aria-labelledby="dropdownMenuButtonSaved{{ loop.index }}">
+                                    <form action="/cart/update_sfl" method="POST" style="display:inline;">
+                                        <input type="hidden" name="user_id" value="{{ cart.user_id }}">
+                                        <input type="hidden" name="product_id" value="{{ cart.product_id }}">
+                                        <input type="hidden" name="seller_id" value="{{ cart.seller_id }}">
+                                        <button type="submit" class="dropdown-item">Move to Cart</button>
+                                    </form>
+                                    <form action="/cart/delete_item" method="POST" style="display:inline;">
+                                        <input type="hidden" name="user_id" value="{{ cart.user_id }}">
+                                        <input type="hidden" name="product_id" value="{{ cart.product_id }}">
+                                        <input type="hidden" name="seller_id" value="{{ cart.seller_id }}">
+                                        <button type="submit" class="dropdown-item">Delete Item</button>
+                                    </form>
+                                    <a class="dropdown-item" href="#" data-toggle="modal" data-target="#updateQuantityModal-{{ cart.product_id }}-{{ cart.seller_id }}">Update Item Quantity</a>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>
+            <a href="{{ url_for('users.login', next=request.path) }}">Log in</a> 
+            or 
+            <a href="{{ url_for('users.register', next=request.path) }}">Register</a> 
+            to continue.
+        </p>
+    {% endif %}
+
+{% endblock %}

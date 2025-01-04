@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+
+{% block title %}Create New Listing - Datazon{% endblock %}
+
+{% block custom_styles %}
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .main-content {
+            padding: 20px;
+            margin-top: 70px;
+        }
+        #suggestion-list {
+            border: 1px solid #ccc;
+            border-top: none;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: white;
+            position: absolute;
+            z-index: 1000;
+        }
+        #suggestion-list a {
+            display: block;
+            padding: 10px;
+            text-decoration: none;
+            color: black;
+        }
+        #suggestion-list a:hover {
+            background-color: #f0f0f0;
+        }
+        .available-products {
+            max-height: 400px; /* Set a maximum height for the products list */
+            overflow-y: auto;  /* Enable vertical scrolling */
+            margin-top: 30px;
+            padding-right: 15px;
+        }
+        .card {
+            height: 100%;
+        }
+        .nav-tabs {
+            margin-bottom: 20px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-message">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <h2>Create a Listing</h2>
+
+    <!-- Tabs for Existing Product and New Product -->
+    <ul class="nav nav-tabs" id="listingTabs" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link active" id="existing-product-tab" data-toggle="tab" href="#existing-product" role="tab" aria-controls="existing-product" aria-selected="true">Existing Datazon Product</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="new-product-tab" data-toggle="tab" href="#new-product" role="tab" aria-controls="new-product" aria-selected="false">Add a New Product to Datazon</a>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="listingTabsContent">
+        <!-- Existing Product Tab -->
+        <div class="tab-pane fade show active" id="existing-product" role="tabpanel" aria-labelledby="existing-product-tab">
+            <h3>Add Listing for Existing Product</h3>
+            
+            <!-- Search Bar -->
+            <form id="searchForm" method="GET" action="/seller/create_listing" class="form-inline mb-3 position-relative">
+                <input id="search" name="q" class="form-control mr-sm-2" type="text" placeholder="Search for existing products" aria-label="Search" autocomplete="off" style="width: 70%;" />
+                <div id="suggestion-list" class="list-group"></div>
+            </form>
+
+            <!-- Product List Section -->
+            <div class="available-products">
+                <div class="row">
+                    {% if products %}
+                        {% for product in products %}
+                            <div class="col-md-4 mb-4">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <h5 class="truncate-card-title"><a href="/product/{{ product.product_id }}">{{ product.product_name }}</a></h5>
+                                        <p class="truncate-card-description">{{ product.product_description }}</p>
+                                        <form action="{{ url_for('listing_controller.create_listing') }}" method="GET" class="use-product-form">
+                                            <input type="hidden" name="product_id" value="{{ product.product_id }}">
+                                            <button type="submit" class="btn btn-secondary">Use This Product</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p style="margin-left: 20px;">No products found.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Listing Form -->
+            <div class="listing-form mt-5">
+                <h3>Listing Details:</h3>
+                <form id="createListingForm" action="{{ url_for('listing_controller.create_listing') }}" method="POST">
+                    <input type="hidden" name="product_id" id="product_id" value="{{ selected_product.product_id if selected_product else '' }}">
+                    <div class="form-group">
+                        <label for="product_name">Product Name:</label>
+                        <input type="text" class="form-control" id="product_name" name="product_name" value="{{ selected_product.product_name if selected_product else '' }}" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="product_description">Product Description:</label>
+                        <textarea class="form-control" id="product_description" name="product_description" rows="3" readonly>{{ selected_product.product_description if selected_product else '' }}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="seller_name">Seller Name:</label>
+                        <input type="text" class="form-control" id="seller_name" name="seller_name" value="{{ current_user.full_name }}" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="price">Price:</label>
+                        <input type="number" class="form-control" id="price" name="price" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="inventory_count">Inventory Count:</label>
+                        <input type="number" class="form-control" id="inventory_count" name="inventory_count" min="1" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create Listing</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Add New Product Tab -->
+        <div class="tab-pane fade" id="new-product" role="tabpanel" aria-labelledby="new-product-tab">
+            <h3>Add a New Product to Datazon</h3>
+
+            <!-- Add New Listing Form -->
+            <form id="createNewProductForm" action="{{ url_for('listing_controller.create_new_product') }}" method="POST">
+                <div class="form-group">
+                    <label for="product_title">Product Title:</label>
+                    <input type="text" class="form-control" id="product_title" name="product_title" maxlength="255" required>
+                </div>
+                <div class="form-group">
+                    <label for="product_description">Product Description:</label>
+                    <textarea class="form-control" id="product_description" name="product_description" maxlength="3900" rows="5" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="product_category">Product Category:</label>
+                    <select class="form-control" id="product_category" name="category_id" required>
+                        <option value="" disabled selected>Select a category</option>
+                        {% for category in categories %}
+                            <option value="{{ category.category_id }}">{{ category.category_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="product_image">Product Image Link:</label>
+                    <input type="text" class="form-control" id="product_image" name="image_url" maxlength="255" required>
+                </div>
+                <div class="form-group">
+                    <label>Image Preview:</label>
+                    <br>
+                    <img id="image_preview" src="" alt="Product Image Preview" style="max-width: 200px; max-height: 200px; display: none;" />
+                </div>
+                <div class="form-group">
+                    <label for="seller_name">Seller Name:</label>
+                    <input type="text" class="form-control" id="seller_name" name="seller_name" value="{{ current_user.full_name }}" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="price">Price:</label>
+                    <input type="number" class="form-control" id="price" name="price" step="0.01" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="inventory_count">Inventory Count:</label>
+                    <input type="number" class="form-control" id="inventory_count" name="inventory_count" min="1" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Add New Product</button>
+            </form>
+        </div>
+    </div>
+        
+{% endblock %}
+
+{% block scripts %}
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Dynamic search suggestions
+            $("#search").on("input", function() {
+                const query = $(this).val();
+                if (query.length < 2) {
+                    $("#suggestion-list").empty().hide();
+                    return;
+                }
+    
+                $.get("/seller/create_listing", { q: query }, function(data) {
+                    $("#suggestion-list").empty();
+    
+                    if (data.length > 0) {
+                        data.forEach(function(product) {
+                            const suggestionItem = $('<a href="#" class="list-group-item list-group-item-action">' + product.product_name + '</a>');
+                            $("#suggestion-list").append(suggestionItem);
+                        });
+                        $("#suggestion-list").show();
+                    } else {
+                        $("#suggestion-list").hide();
+                    }
+                });
+            });
+    
+            // Hide suggestions when clicking outside
+            $(document).click(function(event) {
+                if (!$(event.target).closest("#search, #suggestion-list").length) {
+                    $("#suggestion-list").hide();
+                }
+            });
+    
+            // Autofill the product details in the form by fetching from backend
+            $(".use-product-btn").click(function() {
+                const productId = $(this).data("product-id");
+    
+                $.ajax({
+                    url: '/listing_controller/product_details/' + productId,
+                    type: 'GET',
+                    success: function(data) {
+                        if (data.error) {
+                            alert('Product not found');
+                        } else {
+                            $("#product_id").val(productId);
+                            $("#product_name").val(data.product_name);
+                            $("#product_description").val(data.product_description);
+                        }
+                    },
+                    error: function() {
+                        alert('Failed to fetch product details. Please try again.');
+                    }
+                });
+            });
+
+            // Show image preview when the image URL is entered
+            $("#product_image").on("input", function() {
+                const imageUrl = $(this).val();
+                if (imageUrl) {
+                    $("#image_preview").attr("src", imageUrl).show();
+                } else {
+                    $("#image_preview").hide();
+                }
+            });
+        });
+    </script>    
+{% endblock %}

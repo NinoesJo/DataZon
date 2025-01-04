@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Order Summary - Datazon{% endblock %}
+
+{% block custom_styles %}
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .main-content {
+            padding: 20px;
+            margin-top: 70px;
+        }
+        .order-summary {
+            margin-top: 20px;
+        }
+        .total-cost {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+    </style>
+{% endblock %}
+
+
+{% block content %}
+
+    {% if current_user.is_authenticated %}
+        <h2>Order Summary</h2>
+
+        {% if order_summary %}
+        <div class="order-summary">
+            <h4>Order Details</h4>
+            <p><strong>Order ID:</strong> {{ order_summary.order_id }}</p>
+            <p><strong>Datetime Placed:</strong> {{ order_summary.datetime_placed }}</p>
+            <p><strong>Total Items:</strong> {{ order_summary.item_quantity }}</p>
+            <p><strong>Total Cost:</strong> ${{ order_summary.total_cost }}</p>
+        </div>
+
+        <table class="table table-hover table-bordered container">
+            <thead class="thead-dark">
+                <tr>
+                    <th scope="col">Product</th>
+                    <th scope="col">Seller</th>
+                    <th scope="col">Product Description</th>
+                    <th scope="col">Quantity</th>
+                    <th scope="col">Price Per Item</th>
+                    <th scope="col">Subtotal</th>
+                    <th scope="col">Fulfillment Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in order_items %}
+                <tr>
+                    <td>{{ item.product_name }}</td>
+                    <td>{{ item.seller_name }}</td>
+                    <td>{{ item.product_description }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>${{ item.price }}</td>
+                    <td>${{ item.price * item.quantity }}</td>
+                    <td>{{ 'Fulfilled' if item.is_fulfilled else 'Not Fulfilled' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="mt-3">
+            <a href="/order" class="btn btn-primary">View My Orders</a>
+        </div>
+
+        {% else %}
+        <p>No order details found.</p>
+        {% endif %}
+    {% else %}
+        <p>
+            <a href="{{ url_for('users.login', next=request.path) }}">Log in</a> 
+            or 
+            <a href="{{ url_for('users.register', next=request.path) }}">Register</a> 
+            to view your order summary.
+        </p>
+    {% endif %}
+
+{% endblock %}

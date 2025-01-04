@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Order Fulfillment - Datazon{% endblock %}
+
+{% block content %}
+<h2>Order Fulfillment</h2>
+<div class="flash-messages">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+</div>
+
+<div class="mb-4">
+    <a href="{{ url_for('listing_controller.inventory') }}" class="btn btn-primary">View Current Listings</a>
+    <a href="{{ url_for('account_controller.account') }}" class="btn btn-secondary ml-2">My Account</a>
+    <a href="/seller/{{ current_user.get_id() }}" class="btn btn-secondary ml-2">View Public Seller Page</a>
+</div>
+
+<!-- Filter and Sort Options -->
+<div class="form-inline">
+    <label for="sortOrders" class="mr-2">Sort by:</label>
+    <select id="sortOrders" class="form-control mr-3" onchange="filterOrders()">
+        <option value="recent" {% if sort_by == 'recent' %}selected{% endif %}>Most Recent</option>
+        <option value="oldest" {% if sort_by == 'oldest' %}selected{% endif %}>Least Recent</option>
+        <option value="most_items" {% if sort_by == 'most_items' %}selected{% endif %}>Most Items</option>
+        <option value="least_items" {% if sort_by == 'least_items' %}selected{% endif %}>Least Items</option>
+        <option value="highest_earnings" {% if sort_by == 'highest_earnings' %}selected{% endif %}>Highest Earnings</option>
+        <option value="lowest_earnings" {% if sort_by == 'lowest_earnings' %}selected{% endif %}>Lowest Earnings</option>
+    </select>
+
+    <label for="filterOrders" class="mr-2">Filter:</label>
+    <select id="filterOrders" class="form-control" onchange="filterOrders()">
+        <option value="all" {% if filter == 'all' %}selected{% endif %}>All</option>
+        <option value="fulfilled" {% if filter == 'fulfilled' %}selected{% endif %}>Fulfilled</option>
+        <option value="not_fulfilled" {% if filter == 'not_fulfilled' %}selected{% endif %}>Not Fulfilled</option>
+    </select>
+</div>
+<br>
+
+<table class="table table-hover table-bordered">
+    <thead class="thead-dark">
+        <tr>
+            <th scope="col">Product</th>
+            <th scope="col">Product Description</th>
+            <th scope="col">Quantity</th>
+            <th scope="col">Earnings</th>
+            <th scope="col">Datetime Placed</th>
+            <th scope="col">Fulfillment Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in order_items %}
+        <tr onclick="toggleOrderDetails({{ item.order_id }}, {{ item.product_id }})" style="cursor: pointer;">
+            <td><a href="/product/{{ item.product_id }}">{{ item.product_name }}</a></td>
+            <td>{{ item.product_description }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>${{ item.quantity_price }}</td>
+            <td>{{ item.datetime_placed }}</td>
+            <td>{{ 'Fulfilled' if item.is_fulfilled else 'Not Fulfilled' }}</td>
+        </tr>
+        <tr id="order-{{ item.order_id }}-{{ item.product_id }}" class="order-details" style="display: none;">
+            <td colspan="6">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Customer's Name</th>
+                            <th>Shipping Address</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>{{ item.order_id }}</td>
+                            <td>{{ item.customer_name }}</td>
+                            <td>{{ item.street }}, {{ item.city }}, {{ item.state }} {{ item.zip_code }}, {{ item.country }}</td>
+                            <td>
+                                {% if not item.is_fulfilled %}
+                                <form action="{{ url_for('listing_controller.fulfill_order_item') }}" method="POST">
+                                    <input type="hidden" name="order_id" value="{{ item.order_id }}">
+                                    <input type="hidden" name="product_id" value="{{ item.product_id }}">
+                                    <button type="submit" class="btn btn-primary btn-sm">Fulfill Item</button>
+                                </form>
+                                {% else %}
+                                <button class="btn btn-secondary btn-sm" disabled>Fulfilled</button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if not order_items %}
+<p>No orders to display.</p>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function toggleOrderDetails(orderId, productId) {
+        const row = document.getElementById(`order-${orderId}-${productId}`);
+        row.style.display = row.style.display === "none" || row.style.display === "" ? "table-row" : "none";
+    }
+
+    function filterOrders() {
+        const sortBy = document.getElementById("sortOrders").value;
+        const filter = document.getElementById("filterOrders").value;
+        window.location.href = `/seller/fulfillment?sort_by=${sortBy}&filter=${filter}`;
+    }
+</script>
+{% endblock %}

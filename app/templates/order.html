@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}My Orders - Datazon{% endblock %}
+
+{% block custom_styles %}
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .main-content {
+            padding: 20px;
+            margin-top: 70px;
+        }
+        .item-details {
+            display: none;
+        }
+    </style>
+{% endblock %}
+
+
+{% block content %}
+    <h2>View Orders</h2>
+    <!--             
+    <form class="form-inline" action="/order" method="GET">
+        <input id="orderUserID" name="user_id" class="form-control mr-sm-2" type="text" placeholder="Enter User ID" aria-label="User ID" required>
+        <button class="btn btn-outline-success" type="submit">Show Orders</button>
+    </form>
+        -->
+    <br>
+
+    {% if current_user.is_authenticated %}
+    <div class="form-inline">
+        <label for="sortOrders" class="mr-2">Sort by:</label>
+        <select id="sortOrders" class="form-control" onchange="sortOrders()">
+            <option value="recent" {% if sort_by == 'recent' %}selected{% endif %}>Most Recent</option>
+            <option value="oldest" {% if sort_by == 'oldest' %}selected{% endif %}>Least Recent</option>
+            <option value="most_costly" {% if sort_by == 'most_costly' %}selected{% endif %}>Most Costly</option>
+            <option value="least_costly" {% if sort_by == 'least_costly' %}selected{% endif %}>Least Costly</option>
+            <option value="most_items" {% if sort_by == 'most_items' %}selected{% endif %}>Most Items</option>
+            <option value="least_items" {% if sort_by == 'least_items' %}selected{% endif %}>Least Items</option>
+        </select>
+    </div>
+    <br>
+
+    <table class="table table-hover table-bordered container">
+        <thead class="thead-dark">
+            <tr>
+                <th scope="col">Order ID</th>
+                <th scope="col">Total Cost</th>
+                <th scope="col">Number of Items</th>
+                <th scope="col">Datetime Placed</th>
+                <th scope="col">Order Fulfillment</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if not ordersummaries %}
+                <td>You have not placed any orders.</td>
+            {% endif %}
+            {% for summary in ordersummaries %}
+                <tr onclick="showOrderDetails({{ summary.order_id }})" style="cursor: pointer;">
+                    <td>{{ summary.order_id }}</td>
+                    <td>${{ summary.total_cost }}</td>
+                    <td>{{ summary.item_quantity }}</td>
+                    <td>{{ summary.datetime_placed }}</td>
+                    <td>{{ fulfillment_status[summary.order_id] }}</td>
+                </tr>
+                <tr id="order-{{ summary.order_id }}" class="item-details">
+                    <td colspan="5">
+                        <h5>Items in Order {{ summary.order_id }}:</h5>
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Product</th>
+                                    <th scope="col">Seller</th>
+                                    <th scope="col">Product Description</th>
+                                    <th scope="col">Quantity</th>
+                                    <th scope="col">Subtotal</th>
+                                    <th scope="col">Fulfillment Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in orderitems %}
+                                    {% if item.order_id == summary.order_id %}
+                                        <tr>
+                                            <td><a class="nav-link" href="/product/{{ item.product_id }}">{{ item.product_name }}</a></td>
+                                            <td><a class="nav-link" href="/seller/{{ item.seller_id }}">{{ item.seller_name }}</a></td>
+                                            <td>{{ item.product_description }}</td>
+                                            <td>{{ item.quantity }}</td>
+                                            <td>${{ item.quantity_price }}</td>
+                                            <td>{{ 'Fulfilled' if item.is_fulfilled else 'Not Fulfilled' }}</td>
+                                        </tr>
+                                    {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>
+            <a href="{{ url_for('users.login', next=request.path) }}">Login</a> 
+            or 
+            <a href="{{ url_for('users.register', next=request.path) }}">Register</a> 
+            to continue
+        </p>
+    {% endif %}
+
+{% endblock %}
+
+
+{% block scripts %}
+    <script>
+        function showOrderDetails(orderId) {
+            var row = document.getElementById("order-" + orderId);
+            row.style.display = row.style.display === "none" || row.style.display === "" ? "table-row" : "none";
+        }
+
+        function sortOrders() {
+            const sortBy = document.getElementById("sortOrders").value;
+            window.location.href = `/order?sort_by=${sortBy}`;
+        }
+    </script>
+{% endblock %}
